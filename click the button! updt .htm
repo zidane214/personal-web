@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Klik Tombol</title>
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+
+        #loginArea, #gameArea {
+            display: none;
+        }
+
+        #score {
+            font-size: 36px;
+            margin-bottom: 5px;
+        }
+
+        #highScore {
+            font-size: 20px;
+            color: gold;
+            margin-bottom: 10px;
+        }
+
+        #timer {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+
+        #message {
+            font-size: 24px;
+            color: cyan;
+            margin-top: 20px;
+            min-height: 30px;
+        }
+
+        #clickButton {
+            font-size: 24px;
+            padding: 20px 40px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        #clickButton:active {
+            transform: scale(0.95);
+        }
+
+        #retryButton {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 18px;
+            background-color: orange;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: none;
+        }
+
+        #leaderboard {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        table {
+            width: 300px;
+            margin: 0 auto;
+            border-collapse: collapse;
+            background-color: #333;
+        }
+
+        th, td {
+            padding: 8px;
+            border: 1px solid #555;
+        }
+
+        th {
+            background-color: #444;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loginArea">
+        <h2>Masukkan Nama Anda</h2>
+        <input type="text" id="username" placeholder="Nama" />
+        <button onclick="startGame()">Mulai</button>
+    </div>
+
+    <div id="gameArea">
+        <div id="score">Score: 0</div>
+        <div id="highScore">Score Tertinggi: 999999</div>
+        <div id="timer">Waktu: 30 detik</div>
+        <button id="clickButton">Klik Saya!</button>
+        <div id="message"></div>
+        <button id="retryButton" onclick="retryGame()">Coba Lagi</button>
+        <div id="leaderboard">
+            <h3>Papan Peringkat</h3>
+            <table>
+                <thead>
+                    <tr><th>Nama</th><th>Score</th></tr>
+                </thead>
+                <tbody id="rankTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <audio id="clickSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
+
+    <script>
+        const MAX_SCORE = 999999;
+        const GAME_TIME = 30; // detik
+        let score = 0;
+        let user = '';
+        let timeLeft = GAME_TIME;
+        let timerInterval;
+
+        const leaderboard = JSON.parse(localStorage.getItem("leaderboard") || "[]");
+
+        const scoreDisplay = document.getElementById("score");
+        const messageDisplay = document.getElementById("message");
+        const rankTable = document.getElementById("rankTable");
+        const timerDisplay = document.getElementById("timer");
+        const clickSound = document.getElementById("clickSound");
+        const retryButton = document.getElementById("retryButton");
+
+        function startGame() {
+            const input = document.getElementById("username").value.trim();
+            if (!input) return alert("Masukkan nama dulu ya!");
+
+            user = input;
+            document.getElementById("loginArea").style.display = "none";
+            document.getElementById("gameArea").style.display = "block";
+            retryButton.style.display = "none";
+
+            resetGame();
+            updateLeaderboard();
+            startTimer();
+        }
+
+        function retryGame() {
+            retryButton.style.display = "none";
+            resetGame();
+            startTimer();
+        }
+
+        function resetGame() {
+            score = 0;
+            timeLeft = GAME_TIME;
+            scoreDisplay.textContent = "Score: 0";
+            messageDisplay.textContent = "";
+            timerDisplay.textContent = `Waktu: ${GAME_TIME} detik`;
+        }
+
+        function updateLeaderboard() {
+            leaderboard.sort((a, b) => b.score - a.score);
+            rankTable.innerHTML = "";
+            leaderboard.slice(0, 5).forEach(entry => {
+                rankTable.innerHTML += `<tr><td>${entry.name}</td><td>${entry.score}</td></tr>`;
+            });
+        }
+
+        function getMessage(s) {
+            if (s >= MAX_SCORE) return "omg, selamat ya kamu sudah menamatkan game ini :)";
+            if (s >= 100000) return "wah bukan manusia biasa nih!";
+            if (s >= 10000) return "keren, hormat king!";
+            if (s >= 1000) return "bagus";
+            if (s >= 500) return "lumayan";
+            if (s >= 100) return "biasa";
+            return "";
+        }
+
+        document.getElementById("clickButton").addEventListener("click", () => {
+            if (score >= MAX_SCORE || timeLeft <= 0) return;
+
+            clickSound.play();
+            score++;
+            scoreDisplay.textContent = "Score: " + score;
+            messageDisplay.textContent = getMessage(score);
+
+            if (score === MAX_SCORE) {
+                endGame("TAMAT!");
+            }
+        });
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = `Waktu: ${timeLeft} detik`;
+
+                if (timeLeft <= 0) {
+                    endGame("Waktu habis!");
+                }
+            }, 1000);
+        }
+
+        function endGame(finalMessage) {
+            clearInterval(timerInterval);
+            alert(finalMessage);
+
+            leaderboard.push({ name: user, score: score });
+            localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+            updateLeaderboard();
+
+            retryButton.style.display = "inline-block";
+        }
+
+        window.onload = () => {
+            document.getElementById("loginArea").style.display = "block";
+        };
+    </script>
+                   <footer style="margin-top: 50px; font-size: 14px; color: gray;">
+    by AI
+</footer>
+
+</body>
+</html>
